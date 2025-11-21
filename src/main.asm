@@ -10,6 +10,8 @@ BasicUpstart2(init)
 	.const CHAR_SPACE 			= $20
 	.const CHAR_VERTICAL_LEFT		= $65
 	.const CHAR_VERTICAL_RIGHT		= $67
+	.const GAME_SPEED			= $ff
+	.const RASTER_LINE_ADDR			= $d012
 	.const SCREEN_TOP_LEFT_ADDR 		= $0400
 	.const SCREEN_BOTTOM_LEFT_ADDR		= $07c0
 	.const SCREEN_TOP_LEFT_COLOR_ADDR	= $d800
@@ -21,7 +23,24 @@ init:
 	jsr draw_screen
 
 loop:
+	jsr wait
 	jmp loop
+
+//------------------------------------------------------------------------
+// LOOP SUBROUTINES
+
+wait:
+	ldx #GAME_SPEED
+	lda RASTER_LINE_ADDR
+	cmp #$fb
+	beq wait
+!:
+	lda RASTER_LINE_ADDR
+	cmp #$fb
+	bne !-
+	dex
+	bne !-
+	rts
 
 //------------------------------------------------------------------------
 // INIT SUBROUTINES
