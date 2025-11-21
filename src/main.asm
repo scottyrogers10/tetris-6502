@@ -14,6 +14,8 @@ BasicUpstart2(init)
 	.const SCREEN_BOTTOM_LEFT_ADDR		= $07c0
 	.const SCREEN_TOP_LEFT_COLOR_ADDR	= $d800
 
+	.var temp_addr				= $fb
+
 init:
 	jsr empty_screen
 	jsr draw_screen
@@ -54,11 +56,32 @@ draw_screen:
 	sta SCREEN_BOTTOM_LEFT_ADDR-26, x
 	dex
 	bne !-
+	lda #$86
+	sta temp_addr
+	lda #$04
+	sta temp_addr+1
+	ldx #$14
 !:
 	lda #CHAR_VERTICAL_RIGHT		// draw left border
-	sta SCREEN_TOP_LEFT_ADDR+134, x
-
-	lda #CHAR_VERTICAL_LEFT 		// draw right border
-	sta SCREEN_TOP_LEFT_ADDR+145, x
-
+	ldy #$00
+	sta (temp_addr), y
+	lda temp_addr
+	clc
+	adc #$0b
+	sta temp_addr
+	lda temp_addr+1
+	adc #$00
+	sta temp_addr+1
+	lda #CHAR_VERTICAL_LEFT			// draw right border
+	ldy #$00
+	sta (temp_addr), y
+	lda temp_addr
+	clc
+	adc #$1d
+	sta temp_addr
+	lda temp_addr+1
+	adc #$00
+	sta temp_addr+1
+	dex
+	bne !-
 	rts
