@@ -1,6 +1,8 @@
 BasicUpstart2(init)
-
 	*= $c000 "init"
+// ======================================================================================
+// CONSTANTS
+// ======================================================================================
 
 	.const BORDER_COLOR_ADDR		= $d020
 	.const BG_COLOR_ADDR			= $d021
@@ -10,7 +12,6 @@ BasicUpstart2(init)
 	.const CHAR_SPACE 			= $20
 	.const CHAR_VERTICAL_LEFT		= $65
 	.const CHAR_VERTICAL_RIGHT		= $67
-	.const GAME_SPEED			= $ff
 	.const RASTER_LINE_ADDR			= $d012
 	.const SCREEN_TOP_LEFT_ADDR 		= $0400
 	.const SCREEN_BOTTOM_LEFT_ADDR		= $07c0
@@ -22,28 +23,27 @@ init:
 	jsr empty_screen
 	jsr draw_screen
 
-loop:
+main_loop:
 	jsr wait
-	jmp loop
+	jmp main_loop
 
-//------------------------------------------------------------------------
+// ======================================================================================
 // LOOP SUBROUTINES
+// ======================================================================================
 
 wait:
-	ldx #GAME_SPEED
 	lda RASTER_LINE_ADDR
-	cmp #$fb
-	beq wait
+	cmp #$fa
+	bne wait
 !:
 	lda RASTER_LINE_ADDR
-	cmp #$fb
-	bne !-
-	dex
-	bne !-
+	cmp #$fa
+	beq !-
 	rts
 
-//------------------------------------------------------------------------
+// ======================================================================================
 // INIT SUBROUTINES
+// ======================================================================================
 
 empty_screen:
 	ldx #$fa				// 250 byte chunks
@@ -104,3 +104,10 @@ draw_screen:
 	dex
 	bne !-
 	rts
+
+// ======================================================================================
+// DATA
+// ======================================================================================
+
+*= $2000 "Generic data"
+
