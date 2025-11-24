@@ -1,5 +1,6 @@
 BasicUpstart2(init)
 	*= $c000 "init"
+
 // ======================================================================================
 // CONSTANTS
 // ======================================================================================
@@ -17,29 +18,44 @@ BasicUpstart2(init)
 	.const SCREEN_BOTTOM_LEFT_ADDR		= $07c0
 	.const SCREEN_TOP_LEFT_COLOR_ADDR	= $d800
 
-	.var temp_addr				= $fb
+	.const PIECE_I 	= $00
+	.const PIECE_O 	= $01
+	.const PIECE_T 	= $02
+	.const PIECE_L 	= $03
+	.const PIECE_J 	= $04
+	.const PIECE_S 	= $05
+	.const PIECE_Z 	= $06
+
+	.const zp_temp	= $fb
+
+// ======================================================================================
+// VARIABLES
+// ======================================================================================
+
+	current_color:		.byte $00
+	current_piece:		.byte $00
+	current_rotation:	.byte $00
+	current_x:		.byte $00
+	current_y:		.byte $00
+
+	next_piece:		.byte $00
+	next_rotation:		.byte $00
+
+	board:			.fill 200, ($00)
+	piece_buffer:		.fill 4, ($00)
+	random_seed:		.byte $00
+
+// ======================================================================================
+// MAIN PROGRAM
+// ======================================================================================
 
 init:
 	jsr empty_screen
-	jsr draw_screen
+	jsr draw_board
 
 main_loop:
 	jsr wait
 	jmp main_loop
-
-// ======================================================================================
-// LOOP SUBROUTINES
-// ======================================================================================
-
-wait:
-	lda RASTER_LINE_ADDR
-	cmp #$fa
-	bne wait
-!:
-	lda RASTER_LINE_ADDR
-	cmp #$fa
-	beq !-
-	rts
 
 // ======================================================================================
 // INIT SUBROUTINES
@@ -66,7 +82,7 @@ empty_screen:
 	sta BG_COLOR_ADDR
 	rts
 
-draw_screen:
+draw_board:
 	ldx #$0a
 !:
 	lda #CHAR_HORIZONTAL_BOTTOM		// draw top border
@@ -76,38 +92,113 @@ draw_screen:
 	dex
 	bne !-
 	lda #$86
-	sta temp_addr
+	sta zp_temp
 	lda #$04
-	sta temp_addr+1
+	sta zp_temp+1
 	ldx #$14
 !:
 	lda #CHAR_VERTICAL_RIGHT		// draw left border
 	ldy #$00
-	sta (temp_addr), y
-	lda temp_addr
+	sta (zp_temp), y
+	lda zp_temp
 	clc
 	adc #$0b
-	sta temp_addr
-	lda temp_addr+1
+	sta zp_temp
+	lda zp_temp+1
 	adc #$00
-	sta temp_addr+1
+	sta zp_temp+1
 	lda #CHAR_VERTICAL_LEFT			// draw right border
 	ldy #$00
-	sta (temp_addr), y
-	lda temp_addr
+	sta (zp_temp), y
+	lda zp_temp
 	clc
 	adc #$1d
-	sta temp_addr
-	lda temp_addr+1
+	sta zp_temp
+	lda zp_temp+1
 	adc #$00
-	sta temp_addr+1
+	sta zp_temp+1
 	dex
 	bne !-
+	rts
+
+// ======================================================================================
+// LOOP SUBROUTINES
+// ======================================================================================
+
+wait:
+	lda RASTER_LINE_ADDR
+	cmp #$fa
+	bne wait
+!:
+	lda RASTER_LINE_ADDR
+	cmp #$fa
+	beq !-
 	rts
 
 // ======================================================================================
 // DATA
 // ======================================================================================
 
-*= $2000 "Generic data"
+	*= $2000 "Data"
 
+	piece_I_0: .byte %01000000, %01000000, %01000000, %01000000
+	piece_I_1: .byte %00000000, %11110000, %00000000, %00000000
+	piece_I_2: .byte %01000000, %01000000, %01000000, %01000000
+	piece_I_3: .byte %00000000, %11110000, %00000000, %00000000
+
+	piece_O_0: .byte %01100000, %01100000, %00000000, %00000000
+	piece_O_1: .byte %01100000, %01100000, %00000000, %00000000
+	piece_O_2: .byte %01100000, %01100000, %00000000, %00000000
+	piece_O_3: .byte %01100000, %01100000, %00000000, %00000000
+
+	piece_T_0: .byte %01000000, %11100000, %00000000, %00000000
+	piece_T_1: .byte %01000000, %11000000, %01000000, %00000000
+	piece_T_2: .byte %11100000, %01000000, %00000000, %00000000
+	piece_T_3: .byte %01000000, %01100000, %01000000, %00000000
+
+	piece_L_0: .byte %01000000, %01000000, %01100000, %00000000
+	piece_L_1: .byte %00100000, %11100000, %00000000, %00000000
+	piece_L_2: .byte %11000000, %01000000, %01000000, %00000000
+	piece_L_3: .byte %11100000, %10000000, %00000000, %00000000
+
+	piece_J_0: .byte %01000000, %01000000, %11000000, %00000000
+	piece_J_1: .byte %11100000, %00100000, %00000000, %00000000
+	piece_J_2: .byte %01100000, %01000000, %01000000, %00000000
+	piece_J_3: .byte %10000000, %11100000, %00000000, %00000000
+
+	piece_S_0: .byte %01100000, %11000000, %00000000, %00000000
+	piece_S_1: .byte %10000000, %11000000, %01000000, %00000000
+	piece_S_2: .byte %01100000, %11000000, %00000000, %00000000
+	piece_S_3: .byte %10000000, %11000000, %01000000, %00000000
+
+	piece_Z_0: .byte %11000000, %01100000, %00000000, %00000000
+	piece_Z_1: .byte %01000000, %11000000, %10000000, %00000000
+	piece_Z_2: .byte %11000000, %01100000, %00000000, %00000000
+	piece_Z_3: .byte %01000000, %11000000, %10000000, %00000000
+
+	piece_data_lo:
+		.byte <piece_I_0, <piece_I_1, <piece_I_2, <piece_I_3
+		.byte <piece_O_0, <piece_O_1, <piece_O_2, <piece_O_3
+		.byte <piece_T_0, <piece_T_1, <piece_T_2, <piece_T_3
+		.byte <piece_L_0, <piece_L_1, <piece_L_2, <piece_L_3
+		.byte <piece_J_0, <piece_J_1, <piece_J_2, <piece_J_3
+		.byte <piece_S_0, <piece_S_1, <piece_S_2, <piece_S_3
+		.byte <piece_Z_0, <piece_Z_1, <piece_Z_2, <piece_Z_3
+
+	piece_data_hi:
+		.byte >piece_I_0, >piece_I_1, >piece_I_2, >piece_I_3
+		.byte >piece_O_0, >piece_O_1, >piece_O_2, >piece_O_3
+		.byte >piece_T_0, >piece_T_1, >piece_T_2, >piece_T_3
+		.byte >piece_L_0, >piece_L_1, >piece_L_2, >piece_L_3
+		.byte >piece_J_0, >piece_J_1, >piece_J_2, >piece_J_3
+		.byte >piece_S_0, >piece_S_1, >piece_S_2, >piece_S_3
+		.byte >piece_Z_0, >piece_Z_1, >piece_Z_2, >piece_Z_3
+
+	piece_colors:
+		.byte $03	// I - CYAN
+		.byte $07	// O - YELLOW
+		.byte $04	// T - PURPLE
+		.byte $08	// L - ORANGE
+		.byte $06	// J - BLUE
+		.byte $05	// S - GREEN
+		.byte $02	// Z - RED
