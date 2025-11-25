@@ -26,7 +26,8 @@ BasicUpstart2(init)
 	.const PIECE_S 	= $05
 	.const PIECE_Z 	= $06
 
-	.const zp_temp	= $fb
+	.const zp_temp1	= $fb
+	.const zp_temp2	= $fd
 
 // ======================================================================================
 // VARIABLES
@@ -55,6 +56,7 @@ init:
 
 main_loop:
 	jsr wait
+	jsr draw_current_piece
 	jmp main_loop
 
 // ======================================================================================
@@ -92,37 +94,37 @@ draw_board:
 	dex
 	bne !-
 	lda #$86
-	sta zp_temp
+	sta zp_temp1
 	lda #$04
-	sta zp_temp+1
+	sta zp_temp1+1
 	ldx #$14
 !:
 	lda #CHAR_VERTICAL_RIGHT		// draw left border
 	ldy #$00
-	sta (zp_temp), y
-	lda zp_temp
+	sta (zp_temp1), y
+	lda zp_temp1
 	clc
 	adc #$0b
-	sta zp_temp
-	lda zp_temp+1
+	sta zp_temp1
+	lda zp_temp1+1
 	adc #$00
-	sta zp_temp+1
+	sta zp_temp1+1
 	lda #CHAR_VERTICAL_LEFT			// draw right border
 	ldy #$00
-	sta (zp_temp), y
-	lda zp_temp
+	sta (zp_temp1), y
+	lda zp_temp1
 	clc
 	adc #$1d
-	sta zp_temp
-	lda zp_temp+1
+	sta zp_temp1
+	lda zp_temp1+1
 	adc #$00
-	sta zp_temp+1
+	sta zp_temp1+1
 	dex
 	bne !-
 	rts
 
 // ======================================================================================
-// LOOP SUBROUTINES
+// MAIN LOOP SUBROUTINES
 // ======================================================================================
 
 wait:
@@ -134,6 +136,12 @@ wait:
 	cmp #$fa
 	beq !-
 	rts
+
+draw_current_piece:
+	lda #$00
+	sta current_color
+	sta current_piece
+	sta current_rotation
 
 // ======================================================================================
 // DATA
