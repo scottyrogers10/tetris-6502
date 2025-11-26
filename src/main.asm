@@ -7,9 +7,9 @@ BasicUpstart2(init)
 
 	.const BORDER_COLOR_ADDR		= $d020
 	.const BG_COLOR_ADDR			= $d021
+	.const CHAR_BLOCK			= $51
 	.const CHAR_HORIZONTAL_BOTTOM		= $6f
 	.const CHAR_HORIZONTAL_TOP		= $77
-	.const CHAR_PERIOD			= $2e
 	.const CHAR_SPACE 			= $20
 	.const CHAR_VERTICAL_LEFT		= $65
 	.const CHAR_VERTICAL_RIGHT		= $67
@@ -138,10 +138,31 @@ wait:
 	rts
 
 draw_current_piece:
-	lda #$00
-	sta current_color
+	lda #PIECE_L			// set piece state
 	sta current_piece
+	lda #$00
 	sta current_rotation
+	ldy current_piece
+	lda piece_colors, y
+	sta current_color
+	tya				// load piece data
+	asl
+	asl
+	clc
+	adc current_rotation
+	tay
+	lda piece_data_lo, y
+	sta zp_temp1
+	lda piece_data_hi, y
+	sta zp_temp1+1
+	ldy #$00
+!:
+	lda (zp_temp1), y
+	sta piece_buffer, y
+	iny
+	cpy #$04
+	bne !-
+	rts
 
 // ======================================================================================
 // DATA
