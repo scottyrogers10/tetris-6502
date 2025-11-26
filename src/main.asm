@@ -26,8 +26,8 @@ BasicUpstart2(init)
 	.const PIECE_S 	= $05
 	.const PIECE_Z 	= $06
 
-	.const zp_temp1	= $fb
-	.const zp_temp2	= $fd
+	.const zp_ptr	= $fb
+	.const zp_temp	= $fd
 
 // ======================================================================================
 // VARIABLES
@@ -94,31 +94,31 @@ draw_board:
 	dex
 	bne !-
 	lda #$86
-	sta zp_temp1
+	sta zp_ptr
 	lda #$04
-	sta zp_temp1+1
+	sta zp_ptr+1
 	ldx #$14
 !:
 	lda #CHAR_VERTICAL_RIGHT		// draw left border
 	ldy #$00
-	sta (zp_temp1), y
-	lda zp_temp1
+	sta (zp_ptr), y
+	lda zp_ptr
 	clc
 	adc #$0b
-	sta zp_temp1
-	lda zp_temp1+1
+	sta zp_ptr
+	lda zp_ptr+1
 	adc #$00
-	sta zp_temp1+1
+	sta zp_ptr+1
 	lda #CHAR_VERTICAL_LEFT			// draw right border
 	ldy #$00
-	sta (zp_temp1), y
-	lda zp_temp1
+	sta (zp_ptr), y
+	lda zp_ptr
 	clc
 	adc #$1d
-	sta zp_temp1
-	lda zp_temp1+1
+	sta zp_ptr
+	lda zp_ptr+1
 	adc #$00
-	sta zp_temp1+1
+	sta zp_ptr+1
 	dex
 	bne !-
 	rts
@@ -152,12 +152,12 @@ draw_current_piece:
 	adc current_rotation
 	tay
 	lda piece_data_lo, y
-	sta zp_temp1
+	sta zp_ptr
 	lda piece_data_hi, y
-	sta zp_temp1+1
+	sta zp_ptr+1
 	ldy #$00
 !:
-	lda (zp_temp1), y
+	lda (zp_ptr), y
 	sta piece_buffer, y
 	iny
 	cpy #$04
