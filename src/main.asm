@@ -18,6 +18,8 @@ BasicUpstart2(init)
 	.const SCREEN_BOTTOM_LEFT_ADDR		= $07c0
 	.const SCREEN_TOP_LEFT_COLOR_ADDR	= $d800
 
+	.const BOARD_TOP_LEFT_CHAR_ADDR		= $0487
+
 	.const PIECE_I 	= $00
 	.const PIECE_O 	= $01
 	.const PIECE_T 	= $02
@@ -27,7 +29,7 @@ BasicUpstart2(init)
 	.const PIECE_Z 	= $06
 
 	.const zp_ptr	= $fb
-	.const zp_temp	= $fd
+	.const zp_ptr2	= $fd
 
 // ======================================================================================
 // VARIABLES
@@ -50,20 +52,23 @@ BasicUpstart2(init)
 // MAIN PROGRAM
 // ======================================================================================
 
-init:
+init: {
 	jsr empty_screen
 	jsr draw_board
+}
 
-main_loop:
+main_loop: {
 	jsr wait
+	jsr set_current_piece
 	jsr draw_current_piece
 	jmp main_loop
+}
 
 // ======================================================================================
 // INIT SUBROUTINES
 // ======================================================================================
 
-empty_screen:
+empty_screen: {
 	ldx #$fa				// 250 byte chunks
 !:
 	lda #CHAR_SPACE				// fill screen char ram with spaces
@@ -83,8 +88,9 @@ empty_screen:
 	lda #$00
 	sta BG_COLOR_ADDR
 	rts
+}
 
-draw_board:
+draw_board: {
 	ldx #$0a
 !:
 	lda #CHAR_HORIZONTAL_BOTTOM		// draw top border
@@ -122,12 +128,13 @@ draw_board:
 	dex
 	bne !-
 	rts
+}
 
 // ======================================================================================
 // MAIN LOOP SUBROUTINES
 // ======================================================================================
 
-wait:
+wait: {
 	lda RASTER_LINE_ADDR
 	cmp #$fa
 	bne wait
@@ -136,11 +143,12 @@ wait:
 	cmp #$fa
 	beq !-
 	rts
+}
 
-draw_current_piece:
-	lda #PIECE_L			// set piece state
+set_current_piece: {
+	lda #PIECE_T			// set piece state
 	sta current_piece
-	lda #$00
+	lda #$01
 	sta current_rotation
 	ldy current_piece
 	lda piece_colors, y
@@ -163,6 +171,39 @@ draw_current_piece:
 	cpy #$04
 	bne !-
 	rts
+}
+
+draw_current_piece: {
+	ldx #$00
+loop_row:
+	lda board_row_lo, x	// set the screen char addr
+	sta zp_ptr
+	sta zp_ptr2
+	lda board_row_hi, x
+	sta zp_ptr+1
+	clc
+	adc #$d4
+	sta zp_ptr2+1
+	lda piece_buffer, x
+	ldy #$00
+loop_col:
+	asl
+	bcc !+
+	pha
+	lda #CHAR_BLOCK
+	sta (zp_ptr), y
+	lda current_color
+	sta (zp_ptr2), y
+	pla
+!:
+	iny
+	cpy #$04
+	bne loop_col
+	inx
+	cpx #$04
+	bne loop_row
+	rts
+}
 
 // ======================================================================================
 // DATA
@@ -213,7 +254,6 @@ draw_current_piece:
 		.byte <piece_J_0, <piece_J_1, <piece_J_2, <piece_J_3
 		.byte <piece_S_0, <piece_S_1, <piece_S_2, <piece_S_3
 		.byte <piece_Z_0, <piece_Z_1, <piece_Z_2, <piece_Z_3
-
 	piece_data_hi:
 		.byte >piece_I_0, >piece_I_1, >piece_I_2, >piece_I_3
 		.byte >piece_O_0, >piece_O_1, >piece_O_2, >piece_O_3
@@ -231,3 +271,8 @@ draw_current_piece:
 		.byte $06	// J - BLUE
 		.byte $05	// S - GREEN
 		.byte $02	// Z - RED
+
+	board_row_lo:
+		.fill 20, <BOARD_TOP_LEFT_CHAR_ADDR + (i * 40)
+	board_row_hi:
+		.fill 20, >BOARD_TOP_LEFT_CHAR_ADDR + (i * 40)
