@@ -30,15 +30,16 @@ BasicUpstart2(init)
 
 	.const zp_ptr	= $fb
 	.const zp_ptr2	= $fd
+	.const zp_temp	= $ff
 
 // ======================================================================================
 // VARIABLES
 // ======================================================================================
 
 	current_color:		.byte $00
-	current_piece:		.byte $00
-	current_rotation:	.byte $00
-	current_x:		.byte $00
+	current_piece:		.byte PIECE_L
+	current_rotation:	.byte $02
+	current_x:		.byte $03
 	current_y:		.byte $00
 
 	next_piece:		.byte $00
@@ -146,14 +147,10 @@ wait: {
 }
 
 set_current_piece: {
-	lda #PIECE_T			// set piece state
-	sta current_piece
-	lda #$01
-	sta current_rotation
 	ldy current_piece
 	lda piece_colors, y
 	sta current_color
-	tya				// load piece data
+	tya			// load piece data
 	asl
 	asl
 	clc
@@ -176,28 +173,36 @@ set_current_piece: {
 draw_current_piece: {
 	ldx #$00
 loop_row:
-	lda board_row_lo, x	// set the screen char addr
+	txa			// add current_y (row) offset
+	clc
+	adc current_y
+	tay
+	lda board_row_lo, y	// calculate screen address
 	sta zp_ptr
 	sta zp_ptr2
-	lda board_row_hi, x
+	lda board_row_hi, y
 	sta zp_ptr+1
-	clc
+	clc			// calculate color address
 	adc #$d4
 	sta zp_ptr2+1
+	ldy current_x		// add current_x (column) offset
+	tya
+	clc
+	adc #$04
+	sta zp_temp		// pre calculate loop limit - end column
 	lda piece_buffer, x
-	ldy #$00
 loop_col:
-	asl
+	asl			// check each bit of piece data on this row
 	bcc !+
 	pha
-	lda #CHAR_BLOCK
+	lda #CHAR_BLOCK		// draw block
 	sta (zp_ptr), y
-	lda current_color
+	lda current_color	// set block color
 	sta (zp_ptr2), y
 	pla
 !:
 	iny
-	cpy #$04
+	cpy zp_temp
 	bne loop_col
 	inx
 	cpx #$04
