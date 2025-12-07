@@ -13,6 +13,7 @@ BasicUpstart2(init)
 	.const CHAR_SPACE 			= $20
 	.const CHAR_VERTICAL_LEFT		= $65
 	.const CHAR_VERTICAL_RIGHT		= $67
+	.const JOYSTICK_ADDR			= $dc00
 	.const RASTER_LINE_ADDR			= $d012
 	.const SCREEN_TOP_LEFT_ADDR 		= $0400
 	.const SCREEN_BOTTOM_LEFT_ADDR		= $07c0
@@ -38,9 +39,11 @@ BasicUpstart2(init)
 
 	current_color:		.byte $00
 	current_piece:		.byte PIECE_L
-	current_rotation:	.byte $02
+	current_rotation:	.byte $00
 	current_x:		.byte $03
 	current_y:		.byte $00
+
+	is_rotating:		.byte $00
 
 	next_piece:		.byte $00
 	next_rotation:		.byte $00
@@ -60,6 +63,7 @@ init: {
 
 main_loop: {
 	jsr wait
+	jsr handle_input
 	jsr set_current_piece
 	jsr draw_current_piece
 	jmp main_loop
@@ -146,6 +150,28 @@ wait: {
 	rts
 }
 
+handle_input: {
+	lda JOYSTICK_ADDR
+	and #%00010000
+	beq handle_fire
+	lda #$00
+	sta is_rotating
+	rts
+handle_fire:
+	lda is_rotating
+	bne !+
+	jsr clear_piece
+	lda #$01
+	sta is_rotating
+	lda current_rotation
+	clc
+	adc #$01
+	and #$03
+	sta current_rotation
+!:
+	rts
+}
+
 set_current_piece: {
 	ldy current_piece
 	lda piece_colors, y
@@ -210,6 +236,46 @@ loop_col:
 	rts
 }
 
+clear_piece: {
+	ldx #$00
+loop_row:
+	txa			// add current_y (row) offset
+	clc
+	adc current_y
+	tay
+	lda board_row_lo, y	// calculate screen address
+	sta zp_ptr
+	sta zp_ptr2
+	lda board_row_hi, y
+	sta zp_ptr+1
+	clc			// calculate color address
+	adc #$d4
+	sta zp_ptr2+1
+	ldy current_x		// add current_x (column) offset
+	tya
+	clc
+	adc #$04
+	sta zp_temp		// pre calculate loop limit - end column
+	lda piece_buffer, x
+loop_col:
+	asl			// check each bit of piece data on this row
+	bcc !+
+	pha
+	lda #CHAR_SPACE		// clear block
+	sta (zp_ptr), y
+	lda #$00		// reset color to black
+	sta (zp_ptr2), y
+	pla
+!:
+	iny
+	cpy zp_temp
+	bne loop_col
+	inx
+	cpx #$04
+	bne loop_row
+	rts
+}
+
 // ======================================================================================
 // DATA
 // ======================================================================================
@@ -217,9 +283,9 @@ loop_col:
 	*= $2000 "Data"
 
 	piece_I_0: .byte %01000000, %01000000, %01000000, %01000000
-	piece_I_1: .byte %00000000, %11110000, %00000000, %00000000
+	piece_I_1: .byte %11110000, %00000000, %00000000, %00000000
 	piece_I_2: .byte %01000000, %01000000, %01000000, %01000000
-	piece_I_3: .byte %00000000, %11110000, %00000000, %00000000
+	piece_I_3: .byte %11110000, %00000000, %00000000, %00000000
 
 	piece_O_0: .byte %01100000, %01100000, %00000000, %00000000
 	piece_O_1: .byte %01100000, %01100000, %00000000, %00000000
@@ -227,19 +293,19 @@ loop_col:
 	piece_O_3: .byte %01100000, %01100000, %00000000, %00000000
 
 	piece_T_0: .byte %01000000, %11100000, %00000000, %00000000
-	piece_T_1: .byte %01000000, %11000000, %01000000, %00000000
+	piece_T_1: .byte %01000000, %01100000, %01000000, %00000000
 	piece_T_2: .byte %11100000, %01000000, %00000000, %00000000
-	piece_T_3: .byte %01000000, %01100000, %01000000, %00000000
+	piece_T_3: .byte %01000000, %11000000, %01000000, %00000000
 
 	piece_L_0: .byte %01000000, %01000000, %01100000, %00000000
-	piece_L_1: .byte %00100000, %11100000, %00000000, %00000000
+	piece_L_1: .byte %11100000, %10000000, %00000000, %00000000
 	piece_L_2: .byte %11000000, %01000000, %01000000, %00000000
-	piece_L_3: .byte %11100000, %10000000, %00000000, %00000000
+	piece_L_3: .byte %00100000, %11100000, %00000000, %00000000
 
 	piece_J_0: .byte %01000000, %01000000, %11000000, %00000000
-	piece_J_1: .byte %11100000, %00100000, %00000000, %00000000
+	piece_J_1: .byte %10000000, %11100000, %00000000, %00000000
 	piece_J_2: .byte %01100000, %01000000, %01000000, %00000000
-	piece_J_3: .byte %10000000, %11100000, %00000000, %00000000
+	piece_J_3: .byte %11100000, %00100000, %00000000, %00000000
 
 	piece_S_0: .byte %01100000, %11000000, %00000000, %00000000
 	piece_S_1: .byte %10000000, %11000000, %01000000, %00000000
