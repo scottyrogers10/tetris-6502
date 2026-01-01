@@ -70,7 +70,7 @@ main_loop: {
 	jsr clear_current_piece
 	jsr handle_input
 	jsr drop_current_piece
-	jsr set_current_piece
+	jsr set_current_piece_buffer
 	jsr draw_current_piece
 	jmp main_loop
 }
@@ -264,7 +264,7 @@ drop_current_piece: {
 	rts
 }
 
-set_current_piece: {
+set_current_piece_buffer: {
 	ldy current_piece
 	lda piece_colors, y
 	sta current_color
