@@ -43,6 +43,7 @@ BasicUpstart2(init)
 	current_x:		.byte $03
 	current_y:		.byte $00
 
+	is_moving_x:		.byte $00
 	is_rotating:		.byte $00
 
 	next_piece:		.byte $00
@@ -63,6 +64,7 @@ init: {
 
 main_loop: {
 	jsr wait
+	jsr clear_current_piece
 	jsr handle_input
 	jsr set_current_piece
 	jsr draw_current_piece
@@ -150,17 +152,64 @@ wait: {
 	rts
 }
 
+clear_current_piece: {
+	ldx #$00
+loop_row:
+	txa			// add current_y (row) offset
+	clc
+	adc current_y
+	tay
+	lda board_row_lo, y	// calculate screen address
+	sta zp_ptr
+	sta zp_ptr2
+	lda board_row_hi, y
+	sta zp_ptr+1
+	clc			// calculate color address
+	adc #$d4
+	sta zp_ptr2+1
+	ldy current_x		// add current_x (column) offset
+	tya
+	clc
+	adc #$04
+	sta zp_temp		// pre calculate loop limit - end column
+	lda piece_buffer, x
+loop_col:
+	asl			// check each bit of piece data on this row
+	bcc !+
+	pha
+	lda #CHAR_SPACE		// clear block
+	sta (zp_ptr), y
+	lda #$00		// reset color to black
+	sta (zp_ptr2), y
+	pla
+!:
+	iny
+	cpy zp_temp
+	bne loop_col
+	inx
+	cpx #$04
+	bne loop_row
+	rts
+}
+
 handle_input: {
 	lda JOYSTICK_ADDR
 	and #%00010000
-	beq handle_fire
+	beq handle_fire_press
 	lda #$00
 	sta is_rotating
+	lda JOYSTICK_ADDR
+	and #%00000100
+	beq handle_left_press
+	lda JOYSTICK_ADDR
+	and #%00001000
+	beq handle_right_press
+	lda #$00
+	sta is_moving_x
 	rts
-handle_fire:
+handle_fire_press:
 	lda is_rotating
 	bne !+
-	jsr clear_piece
 	lda #$01
 	sta is_rotating
 	lda current_rotation
@@ -168,6 +217,27 @@ handle_fire:
 	adc #$01
 	and #$03
 	sta current_rotation
+	rts
+handle_left_press:
+	lda is_moving_x
+	bne !+
+	lda #$01
+	sta is_moving_x
+	lda current_x
+	sec
+	sbc #$01
+	sta current_x
+	rts
+handle_right_press:
+	lda is_moving_x
+	bne !+
+	lda #$01
+	sta is_moving_x
+	lda current_x
+	clc
+	adc #$01
+	sta current_x
+	rts
 !:
 	rts
 }
@@ -224,46 +294,6 @@ loop_col:
 	lda #CHAR_BLOCK		// draw block
 	sta (zp_ptr), y
 	lda current_color	// set block color
-	sta (zp_ptr2), y
-	pla
-!:
-	iny
-	cpy zp_temp
-	bne loop_col
-	inx
-	cpx #$04
-	bne loop_row
-	rts
-}
-
-clear_piece: {
-	ldx #$00
-loop_row:
-	txa			// add current_y (row) offset
-	clc
-	adc current_y
-	tay
-	lda board_row_lo, y	// calculate screen address
-	sta zp_ptr
-	sta zp_ptr2
-	lda board_row_hi, y
-	sta zp_ptr+1
-	clc			// calculate color address
-	adc #$d4
-	sta zp_ptr2+1
-	ldy current_x		// add current_x (column) offset
-	tya
-	clc
-	adc #$04
-	sta zp_temp		// pre calculate loop limit - end column
-	lda piece_buffer, x
-loop_col:
-	asl			// check each bit of piece data on this row
-	bcc !+
-	pha
-	lda #CHAR_SPACE		// clear block
-	sta (zp_ptr), y
-	lda #$00		// reset color to black
 	sta (zp_ptr2), y
 	pla
 !:
