@@ -33,6 +33,10 @@ BasicUpstart2(init)
 	.const zp_ptr2	= $fd
 	.const zp_temp	= $ff
 
+	.const target_rotation	= $02
+	.const target_x		= $22
+	.const target_y		= $23
+
 // ======================================================================================
 // VARIABLES
 // ======================================================================================
@@ -213,35 +217,51 @@ handle_input: {
 	rts
 handle_fire_press:
 	lda is_rotating
-	bne !+
+	bne !+			// skip if fire press is held
 	lda #$01
 	sta is_rotating
 	lda current_rotation
 	clc
 	adc #$01
-	and #$03
+	and #$03		// A = target_rotation
+	ldx current_x		// X = target_x
+	ldy current_y		// Y = target_y
+	jsr check_collision
+	bcs !+			// skip if collision occurs
+	lda target_rotation
 	sta current_rotation
 	rts
 handle_left_press:
 	lda is_moving_x
-	bne !+
+	bne !+			// skip if left is held
 	lda #$01
 	sta is_moving_x
 	lda current_x
 	sec
 	sbc #$01
+	tax			// X = target_x
+	ldy current_y		// Y = target_y
+	lda current_rotation	// A = target_rotation
+	jsr check_collision
+	bcs !+			// skip if collision occurs
+	lda target_x
 	sta current_x
 	rts
 handle_right_press:
 	lda is_moving_x
-	bne !+
+	bne !+			// skip if right is held
 	lda #$01
 	sta is_moving_x
 	lda current_x
 	clc
 	adc #$01
+	tax			// X = target_x
+	ldy current_y		// Y = target_y
+	lda current_rotation	// A = target_rotation
+	jsr check_collision
+	bcs !+			// skip if collision occurs
+	lda target_x
 	sta current_x
-	rts
 !:
 	rts
 }
@@ -260,7 +280,14 @@ drop_current_piece: {
 	lda current_y
 	clc
 	adc #$01
+	tay			// Y = target_y
+	ldx current_x		// X = target_x
+	lda current_rotation	// A = target_rotation
+	jsr check_collision
+	bcs !+			// skip if collision occurs
+	lda target_y
 	sta current_y
+!:
 	rts
 }
 
@@ -325,6 +352,21 @@ loop_col:
 	inx
 	cpx #$04
 	bne loop_row
+	rts
+}
+
+// ======================================================================================
+// HELPER SUBROUTINES
+// ======================================================================================
+
+check_collision: {
+	//TODO: Add collision logic
+	// Input: A = target_rotation, X = target_x, Y = target_y
+	// Output: carry set = collision, carry clear = no collision
+	sta target_rotation
+	stx target_x
+	sty target_y
+	clc
 	rts
 }
 
