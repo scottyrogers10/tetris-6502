@@ -43,6 +43,9 @@ BasicUpstart2(init)
 	current_x:		.byte $03
 	current_y:		.byte $00
 
+	drop_frame_count:	.byte $00
+	drop_speed:		.byte $28
+
 	is_moving_x:		.byte $00
 	is_rotating:		.byte $00
 
@@ -66,6 +69,7 @@ main_loop: {
 	jsr wait
 	jsr clear_current_piece
 	jsr handle_input
+	jsr drop_current_piece
 	jsr set_current_piece
 	jsr draw_current_piece
 	jmp main_loop
@@ -239,6 +243,24 @@ handle_right_press:
 	sta current_x
 	rts
 !:
+	rts
+}
+
+drop_current_piece: {
+	clc
+	lda drop_frame_count
+	cmp drop_speed
+	bcs !+
+	adc #$01
+	sta drop_frame_count
+	rts
+!:
+	lda #$00
+	sta drop_frame_count
+	lda current_y
+	clc
+	adc #$01
+	sta current_y
 	rts
 }
 
